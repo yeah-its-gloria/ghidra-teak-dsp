@@ -7,6 +7,7 @@ import ghidra.app.util.opinion.AbstractProgramWrapperLoader
 import ghidra.app.util.opinion.LoadSpec
 import ghidra.app.util.opinion.Loader
 import ghidra.program.model.address.Address
+import ghidra.program.model.address.AddressOutOfBoundsException
 import ghidra.program.model.address.AddressSpace
 import ghidra.program.model.lang.LanguageCompilerSpecPair
 import ghidra.program.model.listing.Program
@@ -43,6 +44,7 @@ class CoffLoader : AbstractProgramWrapperLoader() {
 
     val codeSpace = program.addressFactory.getAddressSpace("code")
 		val dataSpace = program.addressFactory.getAddressSpace("data")
+
 		if (codeSpace == null || dataSpace == null) {
 			log.appendMsg("Teak language is missing the 'code' or 'data' address space")
 			return
@@ -51,13 +53,22 @@ class CoffLoader : AbstractProgramWrapperLoader() {
     val reader = BinaryReader(provider, true)
     val coff = COFF(reader)
 
-    log.appendMsg("File specifies ${coff.header.sectionCount} sections, of which ${coff.sections.size} are usable")
+    log.appendMsg("File specifies ${coff.header.sectionCount} sections and ${coff.header.symbolCount} symbols")
 
 		var codeStarts = emptyArray<Address>()
 
 		@Suppress("DestructuringDeclaration")
 		for (section in coff.sections) {
 			monitor.checkCancelled()
+			
+			if (section.flags.has(COFF.SectionFlags.Dupl)) {
+        continue // TODO: do proper deduplication
+      }
+
+      if (section.data.isEmpty()) {
+        continue
+      }
+      
 			if (section.flags.has(COFF.SectionFlags.Prog)) {
 				val block = MemoryBlockUtils.createInitializedBlock(program, false, "code_${section.name}", wordAddress(codeSpace, section.progAddress), section.data.inputStream(), section.data.size.toLong(), "COFF section ${section.name}, type code", "COFF (Teak)", true, true, true, log, monitor)
 				codeStarts += block.start
@@ -69,15 +80,23 @@ class CoffLoader : AbstractProgramWrapperLoader() {
 			}
 		}
 
-		log.appendMsg("File specifies ${coff.header.symbolCount} symbols")
-
+		// symbol parsing seems all sorts of broken. bad!
 		for (symbol in coff.symbols) {
-			val address = program.addressFactory.defaultAddressSpace.getAddress(symbol.value.toLong())
+			val space = if (symbol.sectionNumber > 0u.toUShort() && symbol.sectionNumber < coff.sections.size.toUShort() /*0x7fffu.toUShort()*/) { // TODO: figure out why symbolds index out of bounds
+				val flags = coff.sections[(symbol.sectionNumber - 1u).toInt()].flags; if (flags.has(COFF.SectionFlags.Prog)) { codeSpace } else { dataSpace }
+			} else { dataSpace } // teakra just calls them "absolute", no idea what it is
+
+			val address = try {
+				space.getAddress(symbol.value.toLong())
+			} catch (e: AddressOutOfBoundsException) {
+				log.appendMsg("Skipping broken symbol $symbol (address bad)")
+				continue
+			}
 
 			try {
 				program.symbolTable.createLabel(address, symbol.name, SourceType.IMPORTED)
 			} catch (e: InvalidInputException) { // TODO: figure out why symbol names are so broken
-				log.appendMsg("Skipping broken symbol $symbol")
+				log.appendMsg("Skipping broken symbol $symbol (name bad)")
 			}
 
 			// TODO: give symbols proper types

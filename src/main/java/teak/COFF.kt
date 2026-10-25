@@ -181,14 +181,6 @@ class COFF {
 
     @Suppress("DestructuringDeclaration")
     for (header in sectionHeaders) {
-      if (header.flags.has(SectionFlags.Dupl)) {
-        continue // TODO: do proper deduplication
-      }
-
-      if (header.size.toInt() == 0) {
-        continue // TODO: figure out why there's empty sections
-      }
-
       // check matches teakra
       val type = header.flags and SectionFlags.RegionMask
       if (type == SectionFlags.Prog && header.dataAddress != 0u) { throw InvalidDataException("prog section has data addr") }
