@@ -29,6 +29,10 @@
 // application.gradle.version property in <GHIDRA_INSTALL_DIR>/Ghidra/application.properties
 // for the correction version of Gradle to use for the Ghidra installation you specify.
 
+plugins {
+	id "org.jetbrains.kotlin.jvm" version "2.4.21"
+}
+
 //----------------------START "DO NOT MODIFY" SECTION------------------------------
 def ghidraInstallDir
 
@@ -46,21 +50,19 @@ task distributeExtension {
 	group = "Ghidra"
 
 	apply from: new File(ghidraInstallDir).getCanonicalPath() + "/support/buildExtension.gradle"
-	dependsOn ':buildExtension'
+	dependsOn ":buildExtension"
 }
 //----------------------END "DO NOT MODIFY" SECTION-------------------------------
 
 repositories {
-	// Declare dependency repositories here.  This is not needed if dependencies are manually 
-	// dropped into the lib/ directory.
-	// See https://docs.gradle.org/current/userguide/declaring_repositories.html for more info.
-	// Ex: mavenCentral()
+	mavenCentral()
 }
 
-dependencies {
-	// Any external dependencies added here will automatically be copied to the lib/ directory when
-	// this extension is built.	
+kotlin {
+	jvmToolchain(21)
 }
 
-// Exclude additional files from the built extension
-// Ex: buildExtension.exclude '.idea/**'
+buildExtension {
+	exclude ".kotlin/**"
+	exclude "**/.kotlin/**"
+}
