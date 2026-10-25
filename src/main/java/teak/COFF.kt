@@ -4,9 +4,7 @@ import ghidra.app.util.bin.BinaryReader
 import ghidra.app.util.bin.InvalidDataException
 import java.nio.ByteBuffer
 import java.nio.charset.CodingErrorAction
-import java.nio.charset.MalformedInputException
 import java.nio.charset.StandardCharsets
-import java.util.IllegalFormatFlagsException
 
 class COFF {
   // FOffset -> file offset. all absolute
@@ -194,8 +192,8 @@ class COFF {
 
       // check matches teakra
       val type = header.flags and SectionFlags.RegionMask
-      if (type == SectionFlags.Prog && header.dataAddress != 0u) { throw IllegalFormatFlagsException("prog section has data addr") }
-      else if (type == SectionFlags.Data && header.progAddress != 0u) { throw IllegalFormatFlagsException("data section has prog addr") }
+      if (type == SectionFlags.Prog && header.dataAddress != 0u) { throw InvalidDataException("prog section has data addr") }
+      else if (type == SectionFlags.Data && header.progAddress != 0u) { throw InvalidDataException("data section has prog addr") }
 
       val bytes = data.getBytes(header.size.toInt(), header.sectionDataFOffset.toLong())
 

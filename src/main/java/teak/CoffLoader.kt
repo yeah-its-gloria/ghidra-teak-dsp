@@ -10,7 +10,7 @@ import ghidra.program.model.address.Address
 import ghidra.program.model.address.AddressSpace
 import ghidra.program.model.lang.LanguageCompilerSpecPair
 import ghidra.program.model.listing.Program
-import ghidra.program.model.symbol.SourceType
+//import ghidra.program.model.symbol.SourceType
 
 class CoffLoader : AbstractProgramWrapperLoader() {
   private val languageId = "Teak:LE:16:default"
