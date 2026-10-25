@@ -3,7 +3,6 @@ package teak
 import ghidra.app.util.bin.BinaryReader
 import ghidra.app.util.bin.InvalidDataException
 import java.nio.ByteBuffer
-import java.nio.charset.CodingErrorAction
 import java.nio.charset.StandardCharsets
 
 class COFF {
@@ -130,7 +129,7 @@ class COFF {
   data class Symbol (
     val name: String, // 8 bytes
     val value: UInt,
-    val sectionNumber: Short,
+    val sectionNumber: UShort,
     val type: SymbolType,
     val storageClass: SymbolStorageClass,
     val auxCount: Byte
@@ -222,10 +221,9 @@ class COFF {
   }
 
   companion object {
-    private val nameDecoder = StandardCharsets.UTF_8.newDecoder().onMalformedInput(CodingErrorAction.IGNORE) // this gets really upset otherwise and I dunno how to handle it. teakra just doesn't care but also gets the correct symbol names?
-
     private fun bytesToString(bytes: ByteArray): String {
-      return nameDecoder.decode(ByteBuffer.wrap(bytes)).toString().trimEnd { it == 0.toChar() }
+      val nullIndex = bytes.indexOf(0.toByte())
+      return String(bytes, 0, if (nullIndex != -1) { nullIndex } else { bytes.size }, Charsets.US_ASCII)
     }
 
     private fun getName(data: BinaryReader, stringList: List<String>): String {
@@ -290,7 +288,7 @@ class COFF {
     }
 
     private fun parseSymbol(data: BinaryReader, stringList: List<String>): Symbol {
-      return Symbol(getName(data, stringList), data.readNextUnsignedInt().toUInt(), data.readNextShort(), SymbolType(data.getUShort()), SymbolStorageClass(data), data.readNextByte())
+      return Symbol(getName(data, stringList), data.readNextUnsignedInt().toUInt(), data.getUShort(), SymbolType(data.getUShort()), SymbolStorageClass(data), data.readNextByte())
     }
   }
 }

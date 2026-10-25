@@ -10,7 +10,8 @@ import ghidra.program.model.address.Address
 import ghidra.program.model.address.AddressSpace
 import ghidra.program.model.lang.LanguageCompilerSpecPair
 import ghidra.program.model.listing.Program
-//import ghidra.program.model.symbol.SourceType
+import ghidra.program.model.symbol.SourceType
+import ghidra.util.exception.InvalidInputException
 
 class CoffLoader : AbstractProgramWrapperLoader() {
   private val languageId = "Teak:LE:16:default"
@@ -70,13 +71,17 @@ class CoffLoader : AbstractProgramWrapperLoader() {
 
 		log.appendMsg("File specifies ${coff.header.symbolCount} symbols")
 
-		// this code is very broken and upsets Ghidra
-		/*for (symbol in coff.symbols) {
+		for (symbol in coff.symbols) {
 			val address = program.addressFactory.defaultAddressSpace.getAddress(symbol.value.toLong())
-			program.symbolTable.createLabel(address, symbol.name, SourceType.IMPORTED)
+
+			try {
+				program.symbolTable.createLabel(address, symbol.name, SourceType.IMPORTED)
+			} catch (e: InvalidInputException) { // TODO: figure out why symbol names are so broken
+				log.appendMsg("Skipping broken symbol $symbol")
+			}
 
 			// TODO: give symbols proper types
-		}*/
+		}
 	}
 
   private fun isSupportedCoff(provider: ByteProvider): Boolean {
